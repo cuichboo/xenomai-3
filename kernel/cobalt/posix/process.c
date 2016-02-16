@@ -349,15 +349,22 @@ int cobalt_bind_personality(unsigned int magic)
 	return ret ?: xid;
 }
 
-int cobalt_bind_core(void)
+int cobalt_bind_core(int ufeatures)
 {
+	struct cobalt_process *process;
 	int ret;
 
 	mutex_lock(&personality_lock);
 	ret = bind_personality(&cobalt_personality);
 	mutex_unlock(&personality_lock);
+	if (ret)
+		return ret;
 
-	return ret;
+	process = cobalt_current_process();
+	/* Feature set userland knows about. */
+	process->ufeatures = ufeatures;
+
+	return 0;
 }
 
 /**
@@ -668,7 +675,7 @@ int cobalt_map_user(struct xnthread *thread, __u32 __user *u_winoff)
 		return ret;
 
 	umm = &cobalt_kernel_ppd.umm;
-	u_window = cobalt_umm_alloc(umm, sizeof(*u_window));
+	u_window = cobalt_umm_zalloc(umm, sizeof(*u_window));
 	if (u_window == NULL)
 		return -ENOMEM;
 
@@ -1215,7 +1222,7 @@ static int handle_cleanup_event(struct mm_struct *mm)
 {
 	struct cobalt_process *old, *process;
 	struct cobalt_ppd *sys_ppd;
-	struct xnthread *thread;
+	struct xnthread *curr;
 
 	/*
 	 * We are NOT called for exiting kernel shadows.
@@ -1238,8 +1245,8 @@ static int handle_cleanup_event(struct mm_struct *mm)
 		 * running though, we have to disable the event
 		 * notifier manually for it.
 		 */
-		thread = xnthread_current();
-		running_exec = thread && (current->flags & PF_EXITING) == 0;
+		curr = xnthread_current();
+		running_exec = curr && (current->flags & PF_EXITING) == 0;
 		if (running_exec) {
 			__handle_taskexit_event(current);
 			ipipe_disable_notifier(current);
@@ -1247,7 +1254,7 @@ static int handle_cleanup_event(struct mm_struct *mm)
 		if (atomic_dec_and_test(&sys_ppd->refcnt))
 			remove_process(process);
 		if (running_exec) {
-			__xnthread_cleanup(thread);
+			__xnthread_cleanup(curr);
 			clear_threadinfo();
 		}
 	}
