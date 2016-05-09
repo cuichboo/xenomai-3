@@ -1282,7 +1282,7 @@ void rtdm_mutex_unlock(rtdm_mutex_t *mutex)
 	trace_cobalt_driver_mutex_release(mutex);
 
 	if (unlikely(xnsynch_release(&mutex->synch_base,
-				     xnsched_current_thread()) != NULL))
+				     xnsched_current_thread())))
 		xnsched_run();
 }
 EXPORT_SYMBOL_GPL(rtdm_mutex_unlock);
