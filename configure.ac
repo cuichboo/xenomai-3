@@ -543,6 +543,7 @@ AC_CHECK_FUNCS([pthread_mutexattr_setprotocol	\
 		pthread_getattr_np		\
 		pthread_atfork			\
 		pthread_setname_np		\
+		pthread_setschedprio		\
 		sched_getcpu			\
 		clock_nanosleep			\
 		shm_open			\
